@@ -1176,6 +1176,7 @@ Error VulkanContext::_create_instance() {
 }
 
 Error VulkanContext::_create_physical_device(VkSurfaceKHR p_surface) {
+	fprintf(stderr, "%s\n", "XXXX");
 	// Make initial call to query gpu_count, then second call for gpu info.
 	uint32_t gpu_count = 0;
 	VkResult err = vkEnumeratePhysicalDevices(inst, &gpu_count, nullptr);
