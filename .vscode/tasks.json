@@ -4,7 +4,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build",
+            "label": "build_dev",
             "group": "build",
             "type": "shell",
             "command": "scons",
@@ -12,6 +12,22 @@
               // enable for debugging with breakpoints
               "dev_build=yes",
             ],
+            "problemMatcher": "$msCompile"
+          },
+          {
+            "label": "build_rel",
+            "group": "build",
+            "type": "shell",
+            "command": "scons",
+            "args": [],
+            "problemMatcher": "$msCompile"
+          },
+          {
+            "label": "run",
+            "group": "build",
+            "type": "shell",
+            "command": "${workspaceFolder}/bin/godot.linuxbsd.editor.x86_64",
+            "args": [],
             "problemMatcher": "$msCompile"
           }
     ]

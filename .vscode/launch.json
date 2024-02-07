@@ -14,10 +14,10 @@
             // To run the project instead of editing it, remove the "--editor" argument.
             "args": [ ],
             "stopAtEntry": false,
-            "cwd": "/home/dima/Work/godot/proj/3d_test",
+            "cwd": "/home/ADMSK/dbefimov/work/godot/proj/3d_test",
             "environment": [],
             "externalConsole": false,
-            "preLaunchTask": "build"
+            "preLaunchTask": "build_dev"
           }
     ]
 }
