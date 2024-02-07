@@ -838,6 +838,9 @@ UnixTerminalLogger::~UnixTerminalLogger() {}
 OS_Unix::OS_Unix() {
 	Vector<Logger *> loggers;
 	loggers.push_back(memnew(UnixTerminalLogger));
+#ifdef DLT_ENABLED
+	loggers.push_back(memnew(DLTLogger));
+#endif
 	_set_logger(memnew(CompositeLogger(loggers)));
 }
 

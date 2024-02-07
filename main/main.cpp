@@ -1691,7 +1691,9 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		// the current working directory, which is inconvenient.
 		String base_path = GLOBAL_GET("debug/file_logging/log_path");
 		int max_files = GLOBAL_GET("debug/file_logging/max_log_files");
+#ifndef DLT_ENABLED
 		OS::get_singleton()->add_logger(memnew(RotatedFileLogger(base_path, max_files)));
+#endif
 	}
 
 	if (main_args.size() == 0 && String(GLOBAL_GET("application/run/main_scene")) == "") {

@@ -36,6 +36,12 @@
 #include "core/os/os.h"
 #include "core/os/time.h"
 #include "core/string/print_string.h"
+#include <string>
+
+#ifdef DLT_ENABLED
+#include <dlt/dlt.h>
+#include <dlt/dlt_cpp_extension.hpp>
+#endif
 
 #if defined(MINGW_ENABLED) || defined(_MSC_VER)
 #define sprintf sprintf_s
@@ -266,3 +272,61 @@ CompositeLogger::~CompositeLogger() {
 		memdelete(loggers[i]);
 	}
 }
+
+#ifdef DLT_ENABLED
+
+namespace {
+/// @brief Main context ID
+    constexpr const char* kMainCntxtID = "GODO";\
+	const std::string kLineSeparator = "::";
+	const std::string kFunctionSeparator = ":";
+	const std::string kFunctionEnd = ":";
+} // namespace
+
+
+DLT_DECLARE_CONTEXT(mainCntxt);
+
+DLTLogger::DLTLogger() {
+	DLT_REGISTER_CONTEXT(mainCntxt, kMainCntxtID, "Godot context");
+}
+
+void DLTLogger::logv(const char *p_format, va_list p_list, bool p_err) {
+	std::string message;
+    va_list ap_copy;
+    va_copy(ap_copy, p_list);
+    size_t len = vsnprintf(0, 0, p_format, ap_copy);
+    message.resize(len + 1);  // need space for NUL
+    vsnprintf(&message[0], len + 1, p_format, p_list);
+    message.resize(len);  // remove the NUL
+	if (!message.empty()) {
+		DLT_LOG_CXX(mainCntxt, p_err == true ? DLT_LOG_ERROR : DLT_LOG_INFO, "", message);
+	}
+}
+
+void DLTLogger::log_error(const char *p_function,
+		const char *p_file,
+		int p_line,
+		const char *p_code,
+		const char *p_rationale,
+		bool p_editor_notify,
+		ErrorType p_type) {
+
+	const char *err_details;
+	if (p_rationale && p_rationale[0]) {
+		err_details = p_rationale;
+	} else {
+		err_details = p_code;
+	}
+	std::string from;
+	from.reserve(strlen(p_file) + kLineSeparator.size() + sizeof(int) + kFunctionSeparator.size() + strlen(p_function) + kFunctionEnd.size());
+	from.append(p_file).append(kLineSeparator).append(std::to_string(p_line)).append(kFunctionSeparator).append(p_function).append(kFunctionEnd);
+
+	DLT_LOG_CXX(mainCntxt, p_type == ErrorType::ERR_WARNING ? DLT_LOG_WARN : DLT_LOG_ERROR,
+			from.c_str(), err_details);
+}
+
+DLTLogger::~DLTLogger() {
+	DLT_UNREGISTER_CONTEXT(mainCntxt);
+}
+
+#endif // DLT_ENABLED

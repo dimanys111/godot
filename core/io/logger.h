@@ -106,4 +106,17 @@ public:
 	virtual ~CompositeLogger();
 };
 
+#ifdef DLT_ENABLED
+
+class DLTLogger : public StdLogger {
+public:
+	DLTLogger();
+	virtual void logv(const char *p_format, va_list p_list, bool p_err) override;
+	virtual void log_error(const char *p_function, const char *p_file, int p_line, const char *p_code, const char *p_rationale, bool p_editor_notify = false, ErrorType p_type = ERR_ERROR) override;
+	virtual ~DLTLogger();
+};
+
+#endif // DLT_ENABLED
+
+
 #endif // LOGGER_H

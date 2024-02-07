@@ -195,6 +195,7 @@ opts.Add(BoolVariable("use_volk", "Use the volk library to load the Vulkan loade
 opts.Add(BoolVariable("disable_exceptions", "Force disabling exception handling code", True))
 opts.Add("custom_modules", "A list of comma-separated directory paths containing custom modules to build.", "")
 opts.Add(BoolVariable("custom_modules_recursive", "Detect custom modules recursively for each specified path.", True))
+opts.Add(BoolVariable("dlt", "Enable DLT.", False))
 
 # Advanced options
 opts.Add(
@@ -381,6 +382,10 @@ for path in module_search_paths:
         env_base.Prepend(CPPPATH=[path, os.path.dirname(path)])
     # Note: custom modules can override built-in ones.
     modules_detected.update(modules)
+
+# DLT option check
+if env_base["dlt"] == True :
+    env_base.Append(CPPDEFINES=["DLT_ENABLED"])
 
 # Add module options.
 for name, path in modules_detected.items():
