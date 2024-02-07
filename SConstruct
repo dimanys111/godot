@@ -140,7 +140,6 @@ env_base.__class__.use_windows_spawn_fix = methods.use_windows_spawn_fix
 
 env_base.__class__.add_shared_library = methods.add_shared_library
 env_base.__class__.add_library = methods.add_library
-env_base.__class__.add_program = methods.add_program
 env_base.__class__.CommandNoCache = methods.CommandNoCache
 env_base.__class__.Run = methods.Run
 env_base.__class__.disable_warnings = methods.disable_warnings
@@ -198,6 +197,16 @@ opts.Add("custom_modules", "A list of comma-separated directory paths containing
 opts.Add(BoolVariable("custom_modules_recursive", "Detect custom modules recursively for each specified path.", True))
 
 # Advanced options
+opts.Add(
+    EnumVariable(
+        "library_type",
+        "Build library type",
+        "executable",
+        ("executable", "static_library", "shared_library"),
+    )
+)
+opts.Add(BoolVariable("merge_lib", "Enable merge libs", False))
+
 opts.Add(BoolVariable("dev_mode", "Alias for dev options: verbose=yes warnings=extra werror=yes tests=yes", False))
 opts.Add(BoolVariable("tests", "Build the unit tests", False))
 opts.Add(BoolVariable("fast_unsafe", "Enable unsafe options for faster rebuilds", False))
@@ -267,6 +276,17 @@ opts.Add("LINKFLAGS", "Custom flags for the linker")
 # Update the environment to have all above options defined
 # in following code (especially platform and custom_modules).
 opts.Update(env_base)
+
+if env_base["library_type"] == "static_library":
+    env_base.__class__.add_program = methods.add_library
+    env_base.Append(CPPDEFINES=["LIBRARY_ENABLED"])
+elif env_base["library_type"] == "shared_library":
+    env_base.__class__.add_program = methods.add_shared_library
+    env_base.Append(CPPDEFINES=["LIBRARY_ENABLED"])
+    # FIXME:  it's need to correctly set -fPIC flag for shared library
+    env_base.Append(CCFLAGS=["-fPIC"])
+else:
+    env_base.__class__.add_program = methods.add_program
 
 # Platform selection: validate input, and add options.
 
@@ -1029,5 +1049,40 @@ def print_elapsed_time():
     time_ms = round((elapsed_time_sec % 1) * 1000)
     print("[Time elapsed: {}.{:03}]".format(time.strftime("%H:%M:%S", time.gmtime(elapsed_time_sec)), time_ms))
 
+def make_static_lib():
+    if env["merge_lib"] == True and env["library_type"] == "static_library":
+        print(f'\nSuffix for architecture "{env["arch"]}", target "{env["target"]}".')
+        path = os.getcwd()
+        obj = str("")
+        suffix = str(env["platform"] + "." + env["target"] + "." + env["arch"])
+
+        print("[staic lib] Find object files...")
+        obj_count = 0
+        for rootdir, dirs, files in os.walk(path):
+            for file in files:
+                if((file.split('.')[-1])=='o' and file.count(suffix)):
+                    obj += " " + os.path.relpath(os.path.join(rootdir, file), path)
+                    obj_count += 1
+        print("[staic lib] Complete. Found object files %d" % obj_count)
+
+        library_name = "libgodotall." + suffix + ".a"
+        arcmd  = "ar rc " + path + "/" + library_name + obj
+        if env["verbose"] == True :
+            print("[staic lib]", arcmd)
+
+        ret = os.system(arcmd)
+        if ret != 0:
+            print("[staic lib] Command ar failed. Ret code %d" % ret)
+
+        ranlibcmd = "ranlib " + library_name
+        if env["verbose"] == True :
+            print("[staic lib]", ranlibcmd)
+
+        ret = os.system(ranlibcmd)
+        if ret != 0:
+            print("Command ranlib failed. Ret code %d" % ret)
+
+        print("[staic lib] Done. %s" % library_name)
 
 atexit.register(print_elapsed_time)
+atexit.register(make_static_lib)
