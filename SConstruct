@@ -13,6 +13,7 @@ import time
 from types import ModuleType
 from collections import OrderedDict
 from importlib.util import spec_from_file_location, module_from_spec
+from subprocess import run
 
 # Explicitly resolve the helper modules, this is done to avoid clash with
 # modules of the same name that might be randomly added (e.g. someone adding
@@ -1071,13 +1072,13 @@ def make_static_lib():
         print("[staic lib] Complete. Found object files %d" % obj_count)
 
         library_name = "libgodotall." + suffix + ".a"
-        arcmd  = "ar rc " + path + "/" + library_name + obj
+        arcmd  = "llvm-ar rcs " + path + "/" + library_name + obj
         if env["verbose"] == True :
             print("[staic lib]", arcmd)
 
-        ret = os.system(arcmd)
+        ret = run(arcmd.split(), check=True).returncode
         if ret != 0:
-            print("[staic lib] Command ar failed. Ret code %d" % ret)
+            print("[staic lib] Command llvm-ar failed. Ret code %d" % ret)
 
         ranlibcmd = "ranlib " + library_name
         if env["verbose"] == True :
