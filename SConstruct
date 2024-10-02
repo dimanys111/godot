@@ -162,7 +162,6 @@ env.__class__.use_windows_spawn_fix = methods.use_windows_spawn_fix
 
 env.__class__.add_shared_library = methods.add_shared_library
 env.__class__.add_library = methods.add_library
-env.__class__.add_program = methods.add_program
 env.__class__.CommandNoCache = methods.CommandNoCache
 env.__class__.Run = methods.Run
 env.__class__.disable_warnings = methods.disable_warnings
@@ -229,6 +228,16 @@ opts.Add("custom_modules", "A list of comma-separated directory paths containing
 opts.Add(BoolVariable("custom_modules_recursive", "Detect custom modules recursively for each specified path.", True))
 
 # Advanced options
+opts.Add(
+    EnumVariable(
+        "library_type",
+        "Build library type",
+        "executable",
+        ("executable", "static_library", "shared_library"),
+    )
+)
+opts.Add(BoolVariable("merge_lib", "Enable merge libs", False))
+
 opts.Add(BoolVariable("dev_mode", "Alias for dev options: verbose=yes warnings=extra werror=yes tests=yes", False))
 opts.Add(BoolVariable("tests", "Build the unit tests", False))
 opts.Add(BoolVariable("fast_unsafe", "Enable unsafe options for faster rebuilds", False))
@@ -314,6 +323,17 @@ if env["import_env_vars"]:
     for env_var in str(env["import_env_vars"]).split(","):
         if env_var in os.environ:
             env["ENV"][env_var] = os.environ[env_var]
+
+if env["library_type"] == "static_library":
+    env.__class__.add_program = methods.add_library
+    env.Append(CPPDEFINES=["LIBRARY_ENABLED"])
+elif env["library_type"] == "shared_library":
+    env.__class__.add_program = methods.add_shared_library
+    env.Append(CPPDEFINES=["LIBRARY_ENABLED"])
+    # FIXME:  it's need to correctly set -fPIC flag for shared library
+    env.Append(CCFLAGS=["-fPIC"])
+else:
+    env.__class__.add_program = methods.add_program
 
 # Platform selection: validate input, and add options.
 
@@ -1101,4 +1121,53 @@ def purge_flaky_files():
             os.remove(path)
 
 
+
+def make_static_lib():
+    if env["merge_lib"] == True and env["library_type"] == "static_library":
+        print(f'\nSuffix for architecture "{env["arch"]}", target "{env["target"]}".')
+        path = os.getcwd()
+        obj = str("")
+        suffix = str(env["platform"] + "." + env["target"] + "." + env["arch"])
+
+        print("[static lib] Find object files...")
+        obj_count = 0
+        for rootdir, dirs, files in os.walk(path):
+            for file in files:
+                if((file.split('.')[-1])=='o' and file.count(suffix)):
+                    obj += " " + os.path.relpath(os.path.join(rootdir, file), path)
+                    obj_count += 1
+        print("[static lib] Complete. Found object files %d" % obj_count)
+        ar = "ar"
+        if env["use_llvm"] == True :
+            if os.environ.get("HOST_DIR"):
+                ar = os.environ["HOST_DIR"] + "/bin/llvm-ar"
+            else:
+                ar = "llvm-ar"
+
+        library_name = "libgodotall." + suffix + ".a"
+        arcmd  = ar + " rcs " + path + "/" + library_name + obj
+        if env["verbose"] == True :
+            print("[static lib]", arcmd)
+        f = open("ar.sh", "w")
+        f.write(arcmd)
+        f.close()
+
+        ret = os.system("chmod +x ar.sh; ./ar.sh")
+        if ret != 0:
+            print("[static lib] Command ar failed. Ret code %d" % ret)
+            Exit(255)
+
+        ranlibcmd = "ranlib " + library_name
+        if env["verbose"] == True :
+            print("[static lib]", ranlibcmd)
+
+        ret = 0 #os.system(os.environ["HOST_DIR"] + "/bin/llvm-ar s")
+        if ret != 0:
+            print("Command ranlib failed. Ret code %d" % ret)
+            Exit(255)
+
+        print("[static lib] Done. %s" % library_name)
+
+
 atexit.register(purge_flaky_files)
+atexit.register(make_static_lib)
